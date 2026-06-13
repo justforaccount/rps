@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rock Paper Scissors · Battle Royale</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --rock-color: #e8735a;
+    --paper-color: #5ab4e8;
+    --scissors-color: #7ade8a;
+    --bg: #0d0d14;
+    --panel: #161622;
+    --panel2: #1d1d2c;
+    --border: #2a2a40;
+    --text: #e8e8f0;
+    --muted: #8a8aaa;
+    --gold: #ffd36a;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(232,115,90,.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(90,180,232,.12), transparent 32%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  .lang-switch {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 40;
+    display: flex;
+    gap: 8px;
+    background: rgba(10,10,18,.72);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px;
+    backdrop-filter: blur(8px);
+  }
+  .lang-switch button {
+    width: auto;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+  }
+  .lang-switch button.active {
+    color: #fff;
+    background: linear-gradient(135deg, #e8735a, #5ab4e8);
+  }
+
+  h1 {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, var(--rock-color), var(--scissors-color), var(--paper-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    padding-right: 120px;
+  }
+
+  .scoreboard {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .score-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 16px;
+    min-width: 100px;
+    justify-content: space-between;
+  }
+
+  .score-icon { font-size: 1.4rem; }
+  .score-name { font-size: 0.75rem; color: var(--muted); }
+  .score-count {
+    font-size: 1.5rem;
+    font-weight: 900;
+    transition: transform 0.15s;
+  }
+  .score-count.bump { transform: scale(1.3); }
+
+  #rock-card   { border-color: var(--rock-color);     box-shadow: 0 0 12px rgba(232,115,90,0.15); }
+  #paper-card  { border-color: var(--paper-color);    box-shadow: 0 0 12px rgba(90,180,232,0.15); }
+  #scissors-card{ border-color: var(--scissors-color); box-shadow: 0 0 12px rgba(122,222,138,0.15); }
+
+  #rock-count     { color: var(--rock-color); }
+  #paper-count    { color: var(--paper-color); }
+  #scissors-count { color: var(--scissors-color); }
+
+  .canvas-wrap {
+    position: relative;
+  }
+  canvas {
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    background: var(--panel);
+    display: block;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  }
+
+  #freeze-banner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    text-align: center;
+    background: rgba(0,0,0,.20);
+    border-radius: 16px;
+  }
+  #freeze-banner.show { display: flex; }
+  .freeze-box {
+    padding: 18px 24px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 16px;
+    background: rgba(12,12,22,.72);
+    box-shadow: 0 0 25px rgba(0,0,0,.45);
+    backdrop-filter: blur(4px);
+  }
+  .freeze-title {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .freeze-num {
+    font-size: 2.2rem;
+    font-weight: 900;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s, background .15s, border-color .15s;
+    letter-spacing: 0.04em;
+  }
+  button:hover { opacity: 0.88; transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+
+  #btn-restart {
+    background: linear-gradient(135deg, var(--rock-color), #c05a44);
+    color: #fff;
+  }
+  #btn-new-setup {
+    background: linear-gradient(135deg, var(--paper-color), #327bb8);
+    color: #fff;
+  }
+  #btn-quit {
+    background: var(--panel);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  #btn-quit:hover { color: var(--text); }
+
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
+  input[type=range] {
+    accent-color: var(--scissors-color);
+    width: 120px;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(13,13,20,0.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    padding: 20px;
+  }
+  .overlay.show { display: flex; }
+
+  .start-box, .overlay-box, .quit-box {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.035), transparent),
+      var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 24px;
+    padding: 34px 38px;
+    text-align: center;
+    max-width: 760px;
+    width: min(760px, 94vw);
+    box-shadow: 0 0 42px rgba(0,0,0,.58);
+  }
+  .start-box h2 {
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--rock-color), var(--scissors-color), var(--paper-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .intro {
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 10px auto 20px;
+    max-width: 640px;
+  }
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 18px 0;
+  }
+  .rule-card {
+    background: rgba(255,255,255,.035);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    color: var(--muted);
+    line-height: 1.55;
+    font-size: .9rem;
+  }
+  .rule-card b {
+    display:block;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .setup-panel {
+    margin-top: 16px;
+    background: rgba(0,0,0,.18);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .setup-title {
+    font-weight: 900;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+  .choice-row {
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin: 10px 0 16px;
+  }
+  .choice-row button {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    min-width: 86px;
+  }
+  .choice-row button.active {
+    color:#fff;
+    border-color: var(--gold);
+    box-shadow: 0 0 16px rgba(255,211,106,.18);
+  }
+  .bet-grid {
+    display:grid;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .bet-card {
+    display:grid;
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+    align-items:center;
+    background: rgba(255,255,255,.025);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    text-align:left;
+  }
+  .player-label {
+    font-weight:900;
+    color:#fff;
+  }
+  .bet-options {
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .bet-options button {
+    padding: 8px 12px;
+    min-width: 82px;
+    background: #12121c;
+    color: var(--muted);
+    border:1px solid var(--border);
+  }
+  .bet-options button.active {
+    color:#fff;
+    border-color: var(--gold);
+  }
+  .start-action {
+    margin-top: 18px;
+    background: linear-gradient(135deg, var(--scissors-color), #4ab85a);
+    color:#fff;
+    width: min(320px, 100%);
+  }
+  .start-action:disabled {
+    cursor:not-allowed;
+    opacity:.38;
+    transform:none;
+  }
+  .hint-line {
+    color: var(--muted);
+    font-size:.85rem;
+    min-height: 1.4em;
+  }
+
+  .overlay-icon { font-size: 4rem; margin-bottom: 12px; }
+  .overlay-title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    margin-bottom: 8px;
+    letter-spacing: 0.06em;
+  }
+  .overlay-sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; line-height:1.65; }
+  .winner-bets {
+    margin: 14px 0 22px;
+    padding: 14px;
+    background: rgba(255,211,106,.08);
+    border: 1px solid rgba(255,211,106,.22);
+    color: #ffe6a0;
+    border-radius: 14px;
+    line-height:1.6;
+  }
+  .overlay-btns { display: flex; gap: 12px; justify-content: center; flex-wrap:wrap; }
+
+  #quit-confirm { z-index: 30; }
+  .quit-box { max-width: 380px; }
+  .quit-box p { margin-bottom: 20px; font-size: 1rem; color: var(--muted); }
+  .quit-box h3 { font-size: 1.2rem; margin-bottom: 8px; }
+
+  @media (max-width: 700px) {
+    body { padding: 70px 10px 18px; }
+    h1 { padding-right: 0; }
+    .rules { grid-template-columns: 1fr; }
+    .start-box { padding: 26px 18px; }
+    .bet-card { grid-template-columns: 1fr; text-align:center; }
+    .bet-options { justify-content:center; }
+  }
+
+/* v3: original arcade-candy UI identity */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+  opacity:.55;
+  z-index:-1;
+}
+h1{
+  padding: 10px 22px;
+  border: 2px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(232,115,90,.18), rgba(122,222,138,.12), rgba(90,180,232,.18));
+  -webkit-text-fill-color: unset;
+  color:#fff;
+  text-shadow:
+    0 2px 0 rgba(0,0,0,.65),
+    0 0 16px rgba(122,222,138,.16);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.06),
+    0 14px 34px rgba(0,0,0,.32);
+}
+.score-card{
+  position:relative;
+  overflow:hidden;
+  border-width:2px;
+  transform: skew(-2deg);
+}
+.score-card > *{ transform: skew(2deg); }
+.score-card::after{
+  content:"";
+  position:absolute;
+  inset:-40% -20%;
+  background:linear-gradient(120deg, transparent 40%, rgba(255,255,255,.08), transparent 60%);
+  transform:translateX(-80%);
+  animation: cardShine 5s linear infinite;
+}
+@keyframes cardShine{
+  0%,70%{transform:translateX(-90%)}
+  100%{transform:translateX(90%)}
+}
+canvas{
+  border: 3px solid rgba(255,255,255,.10);
+  background:
+    radial-gradient(circle at 25% 20%, rgba(232,115,90,.10), transparent 28%),
+    radial-gradient(circle at 75% 80%, rgba(90,180,232,.10), transparent 30%),
+    var(--panel);
+}
+.canvas-wrap::before{
+  content:"BATTLE ARENA";
+  position:absolute;
+  left:18px;
+  top:12px;
+  z-index:1;
+  color:rgba(255,255,255,.08);
+  font-weight:900;
+  letter-spacing:.22em;
+  pointer-events:none;
+}
+.controls button, .choice-row button, .bet-options button{
+  box-shadow: 0 5px 0 rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.controls button:active, .choice-row button:active, .bet-options button:active{
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.start-box{
+  border-color:rgba(255,211,106,.28);
+  background:
+    radial-gradient(circle at top left, rgba(232,115,90,.15), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(90,180,232,.15), transparent 35%),
+    var(--panel);
+}
+.rule-card{
+  border-bottom-width:3px;
+}
+.music-btn{
+  background: linear-gradient(135deg, #ffd36a, #e8735a) !important;
+  color:#20140a !important;
+}
+
+
+/* v4: mobile portrait adaptation */
+@media (max-width: 600px) and (orientation: portrait) {
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    padding: 58px 8px 12px;
+    justify-content: flex-start;
+  }
+  .lang-switch {
+    top: 8px;
+    right: 8px;
+    transform: scale(.88);
+    transform-origin: top right;
+  }
+  h1 {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 1.05rem;
+    letter-spacing: .035em;
+    border-radius: 14px;
+  }
+  .scoreboard {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .score-card {
+    min-width: 0;
+    padding: 6px 7px;
+    border-radius: 10px;
+    gap: 4px;
+  }
+  .score-icon { font-size: 1.1rem; }
+  .score-name { font-size: .62rem; }
+  .score-count { font-size: 1.1rem; }
+  .canvas-wrap {
+    width: 100%;
+  }
+  canvas {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+  }
+  .canvas-wrap::before {
+    font-size: .62rem;
+    left: 10px;
+    top: 8px;
+  }
+  .controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .speed-row {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+    padding: 7px 8px;
+  }
+  input[type=range] {
+    width: min(55vw, 220px);
+  }
+  .controls button {
+    padding: 9px 8px;
+    font-size: .78rem;
+    border-radius: 9px;
+  }
+  .start-box, .overlay-box, .quit-box {
+    width: 96vw;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 20px 14px;
+    border-radius: 18px;
+  }
+  .start-box h2 {
+    font-size: 1.35rem;
+  }
+  .intro {
+    font-size: .84rem;
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .rules {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .rule-card {
+    padding: 10px;
+    font-size: .78rem;
+    line-height: 1.45;
+  }
+  .setup-panel {
+    margin-top: 10px;
+    padding: 12px 10px;
+    border-radius: 14px;
+  }
+  .setup-title {
+    margin-bottom: 8px;
+    font-size: .92rem;
+  }
+  .choice-row {
+    gap: 7px;
+    margin: 8px 0 12px;
+  }
+  .choice-row button {
+    min-width: 58px;
+    padding: 8px 12px;
+  }
+  .bet-grid {
+    gap: 8px;
+  }
+  .bet-card {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 9px;
+    text-align: center;
+  }
+  .player-label {
+    font-size: .86rem;
+  }
+  .bet-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .bet-options button {
+    min-width: 0;
+    padding: 8px 4px;
+    font-size: .74rem;
+  }
+  .start-action {
+    margin-top: 12px;
+    padding: 10px 12px;
+  }
+  .freeze-box {
+    padding: 14px 18px;
+  }
+  .freeze-title {
+    font-size: .95rem;
+  }
+  .freeze-num {
+    font-size: 1.9rem;
+  }
+  .overlay-icon {
+    font-size: 3rem;
+  }
+  .overlay-title {
+    font-size: 1.25rem;
+  }
+  .overlay-sub, .winner-bets {
+    font-size: .86rem;
+  }
+  .overlay-btns button {
+    width: 100%;
+  }
+}
+
+@media (max-height: 720px) and (orientation: portrait) {
+  body {
+    padding-top: 50px;
+  }
+  .rules {
+    display: none;
+  }
+  .intro {
+    font-size: .8rem;
+  }
+  .start-box, .overlay-box, .quit-box {
+    max-height: 90vh;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<div class="lang-switch">
+  <button id="lang-en" class="active" onclick="setLang('en')">English</button>
+  <button id="lang-zh" onclick="setLang('zh')">中文</button>
+</div>
+
+<h1 id="main-title">🪨 Rock Paper Scissors · Battle Royale ✂️</h1>
+
+<div class="scoreboard">
+  <div class="score-card" id="rock-card">
+    <div class="score-icon">🪨</div>
+    <div>
+      <div class="score-name" data-i18n="rock">Rock</div>
+      <div class="score-count" id="rock-count">0</div>
+    </div>
+  </div>
+  <div class="score-card" id="paper-card">
+    <div class="score-icon">📄</div>
+    <div>
+      <div class="score-name" data-i18n="paper">Paper</div>
+      <div class="score-count" id="paper-count">0</div>
+    </div>
+  </div>
+  <div class="score-card" id="scissors-card">
+    <div class="score-icon">✂️</div>
+    <div>
+      <div class="score-name" data-i18n="scissors">Scissors</div>
+      <div class="score-count" id="scissors-count">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="canvas"></canvas>
+  <div id="freeze-banner">
+    <div class="freeze-box">
+      <div class="freeze-title" id="freeze-title">Observe the field</div>
+      <div class="freeze-num" id="freeze-num">2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="speed-row">
+    <span data-i18n="speed">Speed</span>
+    <input type="range" id="speed-slider" min="0.5" max="3" step="0.1" value="1.2">
+    <span id="speed-label">1.2×</span>
+  </div>
+  <button id="btn-restart">🔄 Restart Round</button>
+  <button id="btn-new-setup">🎲 New Bets</button>
+  <button id="btn-music" class="music-btn">♪ Music</button>
+  <button id="btn-quit">Quit</button>
+</div>
+
+<!-- Start / betting page -->
+<div id="start-screen" class="overlay show">
+  <div class="start-box">
+    <h2 id="start-title">Rock Paper Scissors Battle Royale</h2>
+    <p class="intro" id="start-intro">
+      Choose how many players are betting, then each player picks Rock, Paper, or Scissors. After the match starts, all pieces freeze for 2 seconds so everyone can read the battlefield. Each side now starts with 13 pieces.
+    </p>
+
+    <div class="rules">
+      <div class="rule-card"><b id="rule1-title">How it works</b><span id="rule1-text">Rock beats Scissors, Scissors beats Paper, Paper beats Rock. Colliding pieces convert the loser.</span></div>
+      <div class="rule-card"><b id="rule2-title">Betting</b><span id="rule2-text">1–3 players can each bet on the symbol they think will take over the board.</span></div>
+      <div class="rule-card"><b id="rule3-title">Victory</b><span id="rule3-text">When only one symbol remains, players who bet on it are congratulated.</span></div>
+    </div>
+
+    <div class="setup-panel">
+      <div class="setup-title" id="players-title">Choose player count</div>
+      <div class="choice-row" id="player-count-row">
+        <button onclick="setPlayerCount(1)">1</button>
+        <button onclick="setPlayerCount(2)">2</button>
+        <button onclick="setPlayerCount(3)">3</button>
+      </div>
+
+      <div class="setup-title" id="bets-title">Choose bets</div>
+      <div class="bet-grid" id="bet-grid"></div>
+      <div class="hint-line" id="setup-hint">Pick player count first.</div>
+      <button class="start-action" id="btn-start-game" onclick="beginGameFromSetup()" disabled>Start Game</button>
+    </div>
+  </div>
+</div>
+
+<!-- Win overlay -->
+<div id="overlay" class="overlay">
+  <div class="overlay-box">
+    <div class="overlay-icon" id="win-icon"></div>
+    <div class="overlay-title" id="win-title"></div>
+    <div class="overlay-sub" id="win-sub"></div>
+    <div class="winner-bets" id="winner-bets"></div>
+    <div class="overlay-btns">
+      <button id="btn-play-again" style="background:linear-gradient(135deg,#7ade8a,#4ab85a);color:#fff">Play Again</button>
+      <button id="btn-ov-new" style="background:linear-gradient(135deg,#5ab4e8,#327bb8);color:#fff">New Bets</button>
+      <button id="btn-ov-quit" style="background:var(--panel);color:var(--muted);border:1px solid var(--border)">Quit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quit confirm -->
+<div id="quit-confirm" class="overlay">
+  <div class="quit-box">
+    <h3 id="quit-title">Quit?</h3>
+    <p id="quit-text">Current round progress will be lost.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button id="quit-confirm-btn" onclick="doQuit()" style="background:#e8735a;color:#fff">Confirm</button>
+      <button id="quit-cancel-btn" onclick="closeQuit()" style="background:var(--panel);color:var(--muted);border:1px solid var(--border)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let RADIUS = 14; // v5 early init before resizeCanvas
+
+// responsive canvas
+function resizeCanvas() {
+  const portraitPhone = window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
+  const maxW = Math.min(window.innerWidth - (portraitPhone ? 16 : 24), 960);
+  const reservedH = portraitPhone ? 210 : 240;
+  const maxH = Math.min(window.innerHeight - reservedH, 680);
+  canvas.width  = Math.max(300, maxW);
+  canvas.height = Math.max(portraitPhone ? 360 : 260, maxH);
+  RADIUS = portraitPhone ? 11 : 14;
+}
+resizeCanvas();
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  if(gameStarted) startRound(true);
+  else drawBackground();
+});
+
+const TYPES = ['rock','paper','scissors'];
+const EMOJI = { rock:'🪨', paper:'📄', scissors:'✂️' };
+const BEATS = { rock:'scissors', scissors:'paper', paper:'rock' };
+const COLOR = { rock:'#e8735a', paper:'#5ab4e8', scissors:'#7ade8a' };
+const COUNT_PER_TYPE = 13;
+const FREEZE_MS = 2000;
+
+const I18N = {
+  en: {
+    htmlLang:'en',
+    mainTitle:'🪨 Rock Paper Scissors · Battle Royale ✂️',
+    rock:'Rock', paper:'Paper', scissors:'Scissors',
+    speed:'Speed',
+    restart:'🔄 Restart Round', newBets:'🎲 New Bets', musicOn:'♪ Music On', musicOff:'♪ Music Off', quit:'Quit',
+    startTitle:'Rock Paper Scissors Battle Royale',
+    startIntro:'Choose how many players are betting, then each player picks Rock, Paper, or Scissors. After the match starts, all pieces freeze for 2 seconds so everyone can read the battlefield. Each side now starts with 13 pieces.',
+    rule1Title:'How it works',
+    rule1Text:'Rock beats Scissors, Scissors beats Paper, Paper beats Rock. Colliding pieces convert the loser.',
+    rule2Title:'Betting',
+    rule2Text:'1–3 players can each bet on the symbol they think will take over the board.',
+    rule3Title:'Victory',
+    rule3Text:'When only one symbol remains, players who bet on it are congratulated.',
+    playersTitle:'Choose player count',
+    betsTitle:'Choose bets',
+    setupHint0:'Pick player count first.',
+    setupHint1:'Choose a bet for every player.',
+    setupHintReady:'Ready. Press Start Game.',
+    player:'Player',
+    choose:'Choose',
+    startGame:'Start Game',
+    freezeTitle:'Observe the field',
+    won:'dominates the board!',
+    allConverted:'All pieces have been converted. The round is over.',
+    congrats:'Congratulations',
+    betCorrect:'bet on the winning symbol.',
+    noBet:'No player bet on the winner this round.',
+    playAgain:'Play Again',
+    newBetsBtn:'New Bets',
+    quitTitle:'Quit?',
+    quitText:'Current round progress will be lost.',
+    confirm:'Confirm',
+    cancel:'Cancel',
+    ended:'Game ended. Click “Restart Round” or “New Bets” to continue.'
+  },
+  zh: {
+    htmlLang:'zh',
+    mainTitle:'🪨 石头剪刀布 · 大乱斗 ✂️',
+    rock:'石头', paper:'布', scissors:'剪刀',
+    speed:'速度',
+    restart:'🔄 重新开始本局', newBets:'🎲 重新下注', musicOn:'♪ 音乐开', musicOff:'♪ 音乐关', quit:'退出',
+    startTitle:'石头剪刀布大乱斗',
+    startIntro:'开局前先选择下注人数，然后每位玩家选择押石头、布或剪刀。游戏开始后，所有物体会先静止 2 秒，方便玩家看清局势。每个阵营开局 13 个单位。',
+    rule1Title:'玩法',
+    rule1Text:'石头赢剪刀，剪刀赢布，布赢石头。物体碰撞后，输的一方会被转化。',
+    rule2Title:'下注',
+    rule2Text:'可以选择 1–3 名玩家，每名玩家押一个自己认为最终会统治全场的阵营。',
+    rule3Title:'胜负',
+    rule3Text:'当场上只剩一种阵营时游戏结束，押中该阵营的玩家会被祝贺。',
+    playersTitle:'选择玩家人数',
+    betsTitle:'选择赌注',
+    setupHint0:'请先选择玩家人数。',
+    setupHint1:'请为每位玩家选择赌注。',
+    setupHintReady:'已准备好，点击开始游戏。',
+    player:'玩家',
+    choose:'选择',
+    startGame:'开始游戏',
+    freezeTitle:'观察局势',
+    won:'统治全场！',
+    allConverted:'所有单位都已被转化，本局结束。',
+    congrats:'恭喜',
+    betCorrect:'押中了获胜阵营。',
+    noBet:'本局没有玩家押中胜者。',
+    playAgain:'再来一局',
+    newBetsBtn:'重新下注',
+    quitTitle:'确认退出？',
+    quitText:'当前游戏进度将丢失。',
+    confirm:'确认',
+    cancel:'取消',
+    ended:'游戏已结束，点击“重新开始本局”或“重新下注”继续。'
+  }
+};
+
+let lang = 'en';
+let entities = [];
+let animId = null;
+let gameOver = false;
+let gameStarted = false;
+let speedMult = 1.2;
+let playerCount = 0;
+let playerBets = [];
+let freezeUntil = 0;
+
+const speedSlider = document.getElementById('speed-slider');
+const speedLabel  = document.getElementById('speed-label');
+speedSlider.addEventListener('input', () => {
+  speedMult = parseFloat(speedSlider.value);
+  speedLabel.textContent = speedMult.toFixed(1) + '×';
+});
+
+function t(){ return I18N[lang]; }
+function randRange(a,b){ return a + Math.random()*(b-a); }
+
+function setLang(next) {
+  lang = next === 'zh' ? 'zh' : 'en';
+  document.documentElement.lang = t().htmlLang;
+  document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+  document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
+
+  document.getElementById('main-title').textContent = t().mainTitle;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t()[el.dataset.i18n];
+  });
+  document.querySelector('.speed-row span').textContent = t().speed;
+  document.getElementById('btn-restart').textContent = t().restart;
+  document.getElementById('btn-new-setup').textContent = t().newBets;
+  updateMusicButton();
+  document.getElementById('btn-quit').textContent = t().quit;
+
+  document.getElementById('start-title').textContent = t().startTitle;
+  document.getElementById('start-intro').textContent = t().startIntro;
+  document.getElementById('rule1-title').textContent = t().rule1Title;
+  document.getElementById('rule1-text').textContent = t().rule1Text;
+  document.getElementById('rule2-title').textContent = t().rule2Title;
+  document.getElementById('rule2-text').textContent = t().rule2Text;
+  document.getElementById('rule3-title').textContent = t().rule3Title;
+  document.getElementById('rule3-text').textContent = t().rule3Text;
+  document.getElementById('players-title').textContent = t().playersTitle;
+  document.getElementById('bets-title').textContent = t().betsTitle;
+  document.getElementById('btn-start-game').textContent = t().startGame;
+
+  document.getElementById('freeze-title').textContent = t().freezeTitle;
+  document.getElementById('btn-play-again').textContent = t().playAgain;
+  document.getElementById('btn-ov-new').textContent = t().newBetsBtn;
+  document.getElementById('btn-ov-quit').textContent = t().quit;
+  document.getElementById('quit-title').textContent = t().quitTitle;
+  document.getElementById('quit-text').textContent = t().quitText;
+  document.getElementById('quit-confirm-btn').textContent = t().confirm;
+  document.getElementById('quit-cancel-btn').textContent = t().cancel;
+
+  renderPlayerCountButtons();
+  renderBetGrid();
+  updateSetupHint();
+}
+
+function labelType(type) {
+  return t()[type];
+}
+
+function setPlayerCount(n) {
+  playerCount = n;
+  playerBets = Array(n).fill(null);
+  renderPlayerCountButtons();
+  renderBetGrid();
+  updateSetupHint();
+}
+
+function renderPlayerCountButtons() {
+  const buttons = document.querySelectorAll('#player-count-row button');
+  buttons.forEach((btn, idx) => btn.classList.toggle('active', idx + 1 === playerCount));
+}
+
+function renderBetGrid() {
+  const grid = document.getElementById('bet-grid');
+  grid.innerHTML = '';
+  if(!playerCount) return;
+
+  for(let i=0;i<playerCount;i++) {
+    const card = document.createElement('div');
+    card.className = 'bet-card';
+    const label = document.createElement('div');
+    label.className = 'player-label';
+    label.textContent = `${t().player} ${i+1}`;
+
+    const opts = document.createElement('div');
+    opts.className = 'bet-options';
+    TYPES.forEach(type => {
+      const btn = document.createElement('button');
+      btn.textContent = `${EMOJI[type]} ${labelType(type)}`;
+      btn.classList.toggle('active', playerBets[i] === type);
+      btn.onclick = () => {
+        playerBets[i] = type;
+        renderBetGrid();
+        updateSetupHint();
+      };
+      opts.appendChild(btn);
+    });
+
+    card.appendChild(label);
+    card.appendChild(opts);
+    grid.appendChild(card);
+  }
+}
+
+function updateSetupHint() {
+  const hint = document.getElementById('setup-hint');
+  const startBtn = document.getElementById('btn-start-game');
+  if(!playerCount) {
+    hint.textContent = t().setupHint0;
+    startBtn.disabled = true;
+    return;
+  }
+  if(playerBets.some(v => !v)) {
+    hint.textContent = t().setupHint1;
+    startBtn.disabled = true;
+    return;
+  }
+  hint.textContent = t().setupHintReady;
+  startBtn.disabled = false;
+}
+
+
+function canPlaceEntity(x, y, r) {
+  const minGap = r * 2 + 10; // v2: extra safe spacing so the opening does not instantly infect.
+  for(const e of entities) {
+    const dx = e.x - x, dy = e.y - y;
+    if(dx*dx + dy*dy < minGap * minGap) return false;
+  }
+  return true;
+}
+
+function createEntity(type) {
+  const margin = RADIUS + 6;
+  const baseSpeed = randRange(1.2, 2.2);
+  const angle = Math.random() * Math.PI * 2;
+  let x = randRange(margin, canvas.width  - margin);
+  let y = randRange(margin, canvas.height - margin);
+
+  // Try hard to avoid spawning overlapped / touching.
+  for(let tries = 0; tries < 260; tries++) {
+    const tx = randRange(margin, canvas.width  - margin);
+    const ty = randRange(margin, canvas.height - margin);
+    if(canPlaceEntity(tx, ty, RADIUS)) {
+      x = tx; y = ty;
+      break;
+    }
+  }
+
+  return {
+    type,
+    x,
+    y,
+    vx: Math.cos(angle) * baseSpeed,
+    vy: Math.sin(angle) * baseSpeed,
+    r: RADIUS,
+    flash: 0,
+  };
+}
+
+function initEntities() {
+  entities = [];
+
+  // Spawn mixed order so one type does not occupy one whole region first.
+  const spawnList = [];
+  for(let i=0;i<COUNT_PER_TYPE;i++) {
+    TYPES.forEach(type => spawnList.push(type));
+  }
+  for(let i=spawnList.length-1;i>0;i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [spawnList[i], spawnList[j]] = [spawnList[j], spawnList[i]];
+  }
+
+  spawnList.forEach(type => entities.push(createEntity(type)));
+
+  // Final safety pass: if anything is still too close, gently push them apart before the match starts.
+  for(let pass=0; pass<10; pass++) {
+    for(let i=0;i<entities.length;i++) {
+      for(let j=i+1;j<entities.length;j++) {
+        const a=entities[i], b=entities[j];
+        const dx=b.x-a.x, dy=b.y-a.y;
+        const dist=Math.hypot(dx,dy)||0.01;
+        const minDist=a.r+b.r+8;
+        if(dist < minDist) {
+          const nx=dx/dist, ny=dy/dist;
+          const push=(minDist-dist)/2;
+          a.x -= nx*push; a.y -= ny*push;
+          b.x += nx*push; b.y += ny*push;
+          a.x = Math.max(a.r+4, Math.min(canvas.width-a.r-4, a.x));
+          a.y = Math.max(a.r+4, Math.min(canvas.height-a.r-4, a.y));
+          b.x = Math.max(b.r+4, Math.min(canvas.width-b.r-4, b.x));
+          b.y = Math.max(b.r+4, Math.min(canvas.height-b.r-4, b.y));
+        }
+      }
+    }
+  }
+}
+
+
+function updateScoreboard() {
+  const counts = { rock:0, paper:0, scissors:0 };
+  entities.forEach(e => counts[e.type]++);
+
+  TYPES.forEach(type => {
+    const el = document.getElementById(type+'-count');
+    const old = parseInt(el.textContent) || 0;
+    const nw  = counts[type];
+    el.textContent = nw;
+    if(nw !== old) {
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+      setTimeout(()=>el.classList.remove('bump'),150);
+    }
+  });
+
+  return counts;
+}
+
+function checkWin(counts) {
+  const living = TYPES.filter(type => counts[type] > 0);
+  if(living.length === 1) return living[0];
+  return null;
+}
+
+function getWinningPlayers(winner) {
+  const winners = [];
+  playerBets.forEach((bet, i) => {
+    if(bet === winner) winners.push(`${t().player} ${i+1}`);
+  });
+  return winners;
+}
+
+function showWin(winner) {
+  gameOver = true;
+  hideFreezeBanner();
+
+  const info = {
+    rock:    { icon:'🪨', color: '#e8735a' },
+    paper:   { icon:'📄', color: '#5ab4e8' },
+    scissors:{ icon:'✂️', color: '#7ade8a' },
+  };
+  const w = info[winner];
+  const winnerName = labelType(winner);
+  const winningPlayers = getWinningPlayers(winner);
+
+  document.getElementById('win-icon').textContent  = w.icon;
+  document.getElementById('win-title').textContent = `${winnerName} ${t().won}`;
+  document.getElementById('win-title').style.color = w.color;
+  document.getElementById('win-sub').textContent   = t().allConverted;
+
+  const betBox = document.getElementById('winner-bets');
+  if(winningPlayers.length) {
+    betBox.innerHTML = `${t().congrats}: <b>${winningPlayers.join(', ')}</b><br>${t().betCorrect}`;
+  } else {
+    betBox.textContent = t().noBet;
+  }
+  document.getElementById('overlay').classList.add('show');
+}
+
+function move(e) {
+  const s = speedMult;
+  e.x += e.vx * s;
+  e.y += e.vy * s;
+
+  const margin = e.r;
+  if(e.x - margin < 0) { e.x = margin; e.vx = Math.abs(e.vx); }
+  if(e.x + margin > canvas.width)  { e.x = canvas.width  - margin; e.vx = -Math.abs(e.vx); }
+  if(e.y - margin < 0) { e.y = margin; e.vy = Math.abs(e.vy); }
+  if(e.y + margin > canvas.height) { e.y = canvas.height - margin; e.vy = -Math.abs(e.vy); }
+}
+
+function resolveCollisions() {
+  const n = entities.length;
+  for(let i=0;i<n;i++) {
+    for(let j=i+1;j<n;j++) {
+      const a = entities[i], b = entities[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist2 = dx*dx + dy*dy;
+      const minDist = a.r + b.r;
+      if(dist2 > minDist * minDist) continue;
+
+      const dist = Math.sqrt(dist2) || 0.01;
+      const overlap = (minDist - dist) / 2;
+      const nx = dx/dist, ny = dy/dist;
+      a.x -= nx*overlap; a.y -= ny*overlap;
+      b.x += nx*overlap; b.y += ny*overlap;
+
+      const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
+      const dot = dvx*nx + dvy*ny;
+      if(dot > 0) {
+        a.vx -= dot*nx; a.vy -= dot*ny;
+        b.vx += dot*nx; b.vy += dot*ny;
+      }
+
+      if(a.type !== b.type) {
+        if(BEATS[a.type] === b.type) {
+          b.type = a.type; b.flash = 12;
+        } else if(BEATS[b.type] === a.type) {
+          a.type = b.type; a.flash = 12;
+        }
+      }
+    }
+  }
+}
+
+function drawEntity(e) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+
+  if(e.flash > 0) {
+    ctx.shadowColor = COLOR[e.type];
+    ctx.shadowBlur  = 18;
+    e.flash--;
+  } else {
+    ctx.shadowColor = COLOR[e.type];
+    ctx.shadowBlur  = 5;
+  }
+
+  ctx.beginPath();
+  ctx.arc(0,0,e.r,0,Math.PI*2);
+  ctx.fillStyle = COLOR[e.type] + '30';
+  ctx.fill();
+  ctx.strokeStyle = COLOR[e.type];
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.font = `${e.r * 1.3}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(EMOJI[e.type], 0, 1);
+
+  ctx.restore();
+}
+
+function drawBackground() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#161622';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for(let x=0;x<canvas.width;x+=40) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+  }
+  for(let y=0;y<canvas.height;y+=40) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+  }
+}
+
+function showFreezeBanner(msLeft) {
+  const banner = document.getElementById('freeze-banner');
+  banner.classList.add('show');
+  document.getElementById('freeze-title').textContent = t().freezeTitle;
+  document.getElementById('freeze-num').textContent = Math.max(0, msLeft / 1000).toFixed(1);
+}
+
+function hideFreezeBanner() {
+  document.getElementById('freeze-banner').classList.remove('show');
+}
+
+function gameLoop(now) {
+  if(gameOver) return;
+
+  drawBackground();
+
+  const frozen = now < freezeUntil;
+  if(frozen) {
+    showFreezeBanner(freezeUntil - now);
+  } else {
+    hideFreezeBanner();
+    entities.forEach(move);
+    resolveCollisions();
+  }
+
+  entities.forEach(drawEntity);
+
+  const counts = updateScoreboard();
+  const winner = checkWin(counts);
+  if(winner && !frozen) {
+    showWin(winner);
+    return;
+  }
+
+  animId = requestAnimationFrame(gameLoop);
+}
+
+function beginGameFromSetup() {
+  if(!playerCount || playerBets.some(v => !v)) return;
+  document.getElementById('start-screen').classList.remove('show');
+  startRound(false);
+}
+
+function startRound(keepBets = true) {
+  gameStarted = true;
+  gameOver = false;
+  document.getElementById('overlay').classList.remove('show');
+  closeQuit();
+  if(animId) cancelAnimationFrame(animId);
+  initEntities();
+  updateScoreboard();
+
+  drawBackground();
+  entities.forEach(drawEntity);
+
+  freezeUntil = performance.now() + FREEZE_MS;
+  animId = requestAnimationFrame(gameLoop);
+}
+
+function restartGame() {
+  if(!gameStarted) {
+    document.getElementById('start-screen').classList.add('show');
+    return;
+  }
+  startRound(true);
+}
+
+function backToSetup() {
+  gameOver = true;
+  gameStarted = false;
+  if(animId) cancelAnimationFrame(animId);
+  hideFreezeBanner();
+  document.getElementById('overlay').classList.remove('show');
+  closeQuit();
+  document.getElementById('start-screen').classList.add('show');
+  drawBackground();
+  updateScoreboard();
+}
+
+document.getElementById('btn-restart').addEventListener('click', restartGame);
+document.getElementById('btn-new-setup').addEventListener('click', backToSetup);
+document.getElementById('btn-play-again').addEventListener('click', restartGame);
+document.getElementById('btn-ov-new').addEventListener('click', backToSetup);
+
+document.getElementById('btn-quit').addEventListener('click', () => {
+  document.getElementById('quit-confirm').classList.add('show');
+});
+document.getElementById('btn-ov-quit').addEventListener('click', () => {
+  document.getElementById('quit-confirm').classList.add('show');
+});
+
+function doQuit() {
+  gameOver = true;
+  gameStarted = false;
+  if(animId) cancelAnimationFrame(animId);
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('quit-confirm').classList.remove('show');
+  hideFreezeBanner();
+  drawBackground();
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.font = 'bold 1.4rem Noto Sans SC, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(t().ended, canvas.width/2, canvas.height/2);
+}
+
+function closeQuit() {
+  document.getElementById('quit-confirm').classList.remove('show');
+}
+
+
+// v3: Original relaxed retro-platformer style background music.
+// It is not Super Mario music; it is a new simple chiptune loop with a similar cheerful arcade vibe.
+let audioCtx = null;
+let musicOn = false;
+let musicTimer = null;
+let musicStep = 0;
+
+const melody = [
+  ['E5',0.18], ['G5',0.18], ['A5',0.26], ['G5',0.18],
+  ['E5',0.18], ['D5',0.18], ['C5',0.34], [null,0.10],
+  ['C5',0.18], ['E5',0.18], ['G5',0.26], ['E5',0.18],
+  ['D5',0.18], ['C5',0.18], ['D5',0.34], [null,0.10],
+  ['E5',0.18], ['G5',0.18], ['B5',0.26], ['A5',0.18],
+  ['G5',0.18], ['E5',0.18], ['D5',0.34], [null,0.10],
+  ['C5',0.20], ['D5',0.20], ['E5',0.20], ['G5',0.20],
+  ['E5',0.20], ['D5',0.20], ['C5',0.38], [null,0.12],
+];
+const bass = ['C3','C3','G2','G2','A2','A2','F2','G2'];
+
+function noteFreq(note){
+  if(!note) return 0;
+  const map = {C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
+  const m = note.match(/^([A-G]#?)(\d)$/);
+  if(!m) return 0;
+  const semis = (parseInt(m[2],10)-4)*12 + map[m[1]] - 9;
+  return 440 * Math.pow(2, semis/12);
+}
+
+function playTone(freq, dur, type='square', gain=0.035){
+  if(!audioCtx || !freq) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(gain, now + 0.018);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + dur + 0.03);
+}
+
+function musicTick(){
+  if(!musicOn) return;
+  const item = melody[musicStep % melody.length];
+  const note = item[0], dur = item[1];
+  if(note) {
+    playTone(noteFreq(note), dur, 'square', 0.026);
+    // small soft harmony
+    if(musicStep % 4 === 2) playTone(noteFreq(note) * 0.5, dur * 1.25, 'triangle', 0.018);
+  }
+  if(musicStep % 4 === 0) {
+    const b = bass[Math.floor(musicStep / 4) % bass.length];
+    playTone(noteFreq(b), 0.30, 'triangle', 0.024);
+  }
+  musicStep++;
+  musicTimer = setTimeout(musicTick, Math.max(70, dur * 1000));
+}
+
+function updateMusicButton(){
+  const btn = document.getElementById('btn-music');
+  if(btn) btn.textContent = musicOn ? t().musicOn : t().musicOff;
+}
+
+function toggleMusic(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  musicOn = !musicOn;
+  updateMusicButton();
+  if(musicOn) {
+    if(musicTimer) clearTimeout(musicTimer);
+    musicTick();
+  } else if(musicTimer) {
+    clearTimeout(musicTimer);
+    musicTimer = null;
+  }
+}
+document.getElementById('btn-music').addEventListener('click', toggleMusic);
+
+// default English
+setLang('en');
+drawBackground();
+updateScoreboard();
+</script>
+</body>
+</html>
